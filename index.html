@@ -1,0 +1,311 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>クイズ！タチャワネア</title>
+
+<style>
+body {
+  font-family: sans-serif;
+  margin: 0;
+  background: #0b0f2a;
+  color: #fff;
+}
+
+.container { padding: 20px; }
+
+.center {
+  text-align: center;
+  margin-top: 40vh;
+  transform: translateY(-50%);
+}
+
+.title {
+  font-size: 24px;
+  margin-bottom: 24px;
+}
+
+button {
+  width: 100%;
+  padding: 14px;
+  margin-top: 10px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
+  cursor: pointer;
+}
+
+button:disabled {
+  background: #555 !important;
+  color: #999;
+  cursor: not-allowed;
+}
+
+.start { background: #f2c94c; color: #000; }
+.choice { background: #2c3190; text-align: left; color: #fff;}
+.choice.selected { background: #f2c94c; color: #000; }
+
+.next { background: #27ae60; }
+.submit { background: #e67e22; }
+
+.card {
+  background: #1a1f4d;
+  padding: 16px;
+  margin-bottom: 12px;
+  border-radius: 12px;
+}
+
+.hidden { display: none; }
+
+.result {
+  text-align: center;
+  font-size: 20px;
+  margin-bottom: 20px;
+}
+
+.correct { color: #2ecc71; }
+.wrong { color: #e74c3c; }
+
+/* 色分け */
+.user-choice { background: #f2c94c; color:#000; }
+.correct-choice { background: #2ecc71; }
+.wrong-choice { background: #e74c3c; }
+
+/* 下部固定ボタン */
+.actions {
+  position: sticky;
+  bottom: 0;
+  background: #0b0f2a;
+  padding: 10px 20px;
+}
+.hojomongon{
+  font-size: 75%;
+}
+.title-h1{
+  font-size: 120%;
+}
+.top-image {
+  width: 100%;
+  max-width: 320px;
+  border-radius: 12px;
+  margin-bottom: 16px;
+}
+</style>
+</head>
+
+<body>
+
+<!-- 入口 -->
+<div id="startScreen" class="container center">
+  <img 
+    src="https://www.sponichi.co.jp/entertainment/news/2025/03/02/jpeg/20250301s100413H4395000p_view.webp"
+    class="top-image"
+    alt="トップ画像"
+  >
+
+  <div class="title">
+    <span class="title-h1">クイズ！タチャワネア</span><br>
+    <span class="hojomongon">1問でも多く正解して豪華賞品をGETしよう</span>
+  </div>
+
+  <button class="start" onclick="startQuiz()">開始する</button>
+</div>
+<!-- クイズ -->
+<div id="quizScreen" class="container hidden"></div>
+<div id="actionArea" class="actions hidden"></div>
+
+<!-- 結果 -->
+<div id="resultScreen" class="container hidden">
+  <div class="card result" id="resultText"></div>
+  <div id="detailList"></div>
+  <button class="start" onclick="restartQuiz()">もう一度挑戦</button>
+</div>
+
+<script>
+const questions = [
+{
+  q: "タチャワくんの誕生日はどれ",
+  choices: ["4月23日", "4月27日", "5月13日", "9月28日"],
+  answer: 1
+},
+{
+  q: "次のうち、タチャワくんに関係あるエピソードはどれ",
+  choices: [
+    "ローソンで1,000円出して10,000円出した時のおつりをもらった",
+    "酔わせてベロリでやっほっほ",
+    "澤井の机を靴下でこすりまくった",
+    "オナンに奢ったのにオナンの名前で領収書作られた"
+  ],
+  answer: 3
+},
+{
+  q: "次のうち、ジュンぺーじゃないのは誰",
+  choices: ["タチャワくん", "堀井純平", "鈴木純平", "大森純平"],
+  answer: 0
+},
+{
+  q: "次のうち、赤点回避の時に起こっていないことはどれ",
+  choices: [
+    "ガショはその場にいなかった",
+    "雰囲気に飲まれて笑うことはなく、最優先でやっちゃんが笑ってるかどうかを確認してるヤツがいた",
+    "タチャワくんが膝から崩れ落ちて喜んだ",
+    "一番館町田店のトイレで尿をまき散らすやつがいた"
+  ],
+  answer: 3
+},
+{
+  q: "タチャワくんについて正しいのはどれ",
+  choices: ["最高な奴", "最高な奴", "最高な奴", "最高な奴"],
+  answer: "all"
+}
+];
+
+const rewards = [
+  "参加賞：次回チャレンジ権",
+  "ボーリングでタチャワチャンスを優先的に使える（強制的に使わなきゃいけない）権利",
+  "セミダブルのベッドでタチャワくんと一晩過ごす権利",
+  "タチャワくんとディープキスの権利",
+  "タチャワくんのアナルを見ながらタチャワくんとアーセナルを応援できる権利",
+  "タチャワくんから100万円"
+];
+
+let answers = Array(questions.length).fill(null);
+let currentIndex = 0;
+
+function isAllAnswered() {
+  return answers.every(a => a !== null);
+}
+
+function startQuiz() {
+  document.getElementById("startScreen").classList.add("hidden");
+  document.getElementById("quizScreen").classList.remove("hidden");
+  render();
+}
+
+function render() {
+  const container = document.getElementById("quizScreen");
+  const actionArea = document.getElementById("actionArea");
+
+  container.innerHTML = "";
+  actionArea.innerHTML = "";
+  actionArea.classList.remove("hidden");
+
+  questions.forEach((q, i) => {
+    if (i > currentIndex) return;
+
+    const card = document.createElement("div");
+    card.className = "card";
+
+    let html = `<p>第${i+1}問：${q.q}</p>`;
+
+    q.choices.forEach((c, index) => {
+      const selected = answers[i] === index ? "selected" : "";
+      html += `
+        <button class="choice ${selected}" onclick="selectAnswer(${i}, ${index})">
+          ${String.fromCharCode(65+index)}. ${c}
+        </button>
+      `;
+    });
+
+    card.innerHTML = html;
+    container.appendChild(card);
+  });
+
+  if (currentIndex < questions.length - 1) {
+    actionArea.innerHTML = `<button class="next" onclick="nextQuestion()">次へ</button>`;
+  } else {
+    const disabled = isAllAnswered() ? "" : "disabled";
+    actionArea.innerHTML = `
+      <button class="submit" onclick="showResult()" ${disabled}>
+        回答する
+      </button>
+      ${!isAllAnswered() ? '<p style="font-size:12px;color:#aaa;">※すべての問題に回答してください</p>' : ''}
+    `;
+  }
+}
+
+function selectAnswer(qIndex, choiceIndex) {
+  answers[qIndex] = choiceIndex;
+  render();
+}
+
+function nextQuestion() {
+  if (answers[currentIndex] === null) {
+    alert("選択してください");
+    return;
+  }
+  currentIndex++;
+  render();
+}
+
+function showResult() {
+  let correct = 0;
+  const detail = document.getElementById("detailList");
+  detail.innerHTML = "";
+
+  questions.forEach((q, i) => {
+    let isCorrect;
+
+    if (q.answer === "all") {
+      isCorrect = answers[i] !== null;
+    } else {
+      isCorrect = answers[i] === q.answer;
+    }
+
+    if (isCorrect) correct++;
+
+    const div = document.createElement("div");
+    div.className = "card";
+
+    let choicesHtml = "";
+
+q.choices.forEach((c, idx) => {
+  let cls = "";
+
+  if (q.answer !== "all") {
+    if (idx === q.answer) cls = "correct-choice";
+    if (idx === answers[i] && idx !== q.answer) cls = "wrong-choice";
+    if (idx === answers[i]) cls += " user-choice";
+  } else {
+    // ★ここが変更点
+    if (idx === answers[i]) cls = "user-choice correct-choice";
+  }
+
+  choicesHtml += `<div class="${cls}" style="padding:6px;border-radius:6px;margin-top:4px;">
+    ${String.fromCharCode(65+idx)}. ${c}
+  </div>`;
+});
+    div.innerHTML = `
+      <p>第${i+1}問：${q.q}</p>
+      ${choicesHtml}
+      <p class="${isCorrect ? 'correct' : 'wrong'}">
+        ${isCorrect ? "正解" : "不正解"}
+      </p>
+    `;
+
+    detail.appendChild(div);
+  });
+
+  document.getElementById("quizScreen").classList.add("hidden");
+  document.getElementById("actionArea").classList.add("hidden");
+  document.getElementById("resultScreen").classList.remove("hidden");
+
+  const reward = rewards[correct];
+
+  document.getElementById("resultText").innerText =
+    `${correct}問正解！\nあなたには「${reward}」をプレゼント！`;
+    window.scrollTo({ top: 0, behavior: "instant" });
+}
+
+function restartQuiz() {
+  answers = Array(questions.length).fill(null);
+  currentIndex = 0;
+
+  document.getElementById("resultScreen").classList.add("hidden");
+  document.getElementById("startScreen").classList.remove("hidden");
+}
+</script>
+
+</body>
+</html>
